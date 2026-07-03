@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Groupes EPS — Composeur de groupes de classe</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap');
+
+:root{
+  --encre:#16262B;
+  --encre-2:#3D5157;
+  --fond:#F1F4F3;
+  --carte:#FFFFFF;
+  --ligne:#D6DEDC;
+  --terrain:#1B6CA8;
+  --terrain-fonce:#12496F;
+  --perf:#12666E;
+  --vigi-fonce:#7A3324;
+  --sifflet:#C8A020;
+  --alerte:#B3402A;
+  --ok:#2E7D4F;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{
+  font-family:'Barlow',system-ui,sans-serif;
+  background:var(--fond);
+  color:var(--encre);
+  line-height:1.45;
+  background-image:linear-gradient(90deg, transparent 49.7%, rgba(27,108,168,.06) 49.7%, rgba(27,108,168,.06) 50.3%, transparent 50.3%);
+}
+h1,h2,h3{font-family:'Barlow Condensed','Barlow',sans-serif;letter-spacing:.01em}
+
+/* ---------- entête ---------- */
+header.app{background:var(--encre);color:#fff;padding:1.1rem 1.6rem .95rem;border-bottom:4px solid var(--terrain)}
+header.app .surtitre{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;color:#9FC3DC;font-weight:600}
+header.app h1{font-size:1.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1.1}
+header.app .sous{color:#B9C6C4;font-size:.9rem;margin-top:.15rem}
+
+main{max-width:1280px;margin:0 auto;padding:1.4rem 1.6rem 4rem}
+
+/* ---------- sections ---------- */
+section.etape{background:var(--carte);border:1px solid var(--ligne);border-radius:var(--radius);margin-bottom:1.3rem;overflow:hidden}
+.etape > .bandeau{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.1rem;border-bottom:1px solid var(--ligne);background:#FAFCFB}
+.etape .num{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;background:var(--terrain);color:#fff;width:1.9rem;height:1.9rem;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.etape h2{font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em}
+.etape .bandeau .aide{margin-left:auto;font-size:.82rem;color:var(--encre-2);text-align:right}
+.etape .corps{padding:1.1rem}
+
+/* ---------- boutons & champs ---------- */
+button{font-family:'Barlow',sans-serif;font-weight:600;font-size:.88rem;border:1px solid var(--encre);background:var(--encre);color:#fff;padding:.5rem .95rem;border-radius:7px;cursor:pointer}
+button:hover{background:var(--encre-2);border-color:var(--encre-2)}
+button.secondaire{background:#fff;color:var(--encre);border-color:var(--ligne)}
+button.secondaire:hover{background:#F0F3F2}
+button.principal{background:var(--terrain);border-color:var(--terrain);font-size:.95rem;padding:.6rem 1.3rem}
+button.principal:hover{background:var(--terrain-fonce);border-color:var(--terrain-fonce)}
+button.danger{background:#fff;color:var(--alerte);border-color:var(--ligne)}
+button.danger:hover{background:#FBEEEA}
+button:focus-visible, input:focus-visible, select:focus-visible{outline:3px solid var(--sifflet);outline-offset:1px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=number],select{font-family:'Barlow',sans-serif;font-size:.9rem;border:1px solid var(--ligne);border-radius:7px;padding:.45rem .6rem;background:#fff;color:var(--encre)}
+label.champ{display:flex;flex-direction:column;gap:.25rem;font-size:.8rem;font-weight:600;color:var(--encre-2)}
+.rangee{display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end}
+.note{font-size:.82rem;color:var(--encre-2)}
+.pastille-aide{display:inline-block;background:#EAF2F8;border:1px solid #C9DEEE;color:var(--terrain-fonce);border-radius:7px;padding:.5rem .8rem;font-size:.83rem;margin-top:.7rem}
+
+/* ---------- import ---------- */
+.import-zone{border:2px dashed var(--ligne);border-radius:var(--radius);padding:1.6rem;text-align:center;color:var(--encre-2);background:#FAFCFB;cursor:pointer;transition:border-color .15s, background .15s}
+.import-zone.survol{border-color:var(--terrain);background:#EEF5FA}
+.import-zone strong{color:var(--encre)}
+
+/* ---------- tableau élèves ---------- */
+.table-scroll{overflow-x:auto;border:1px solid var(--ligne);border-radius:8px}
+table.eleves{border-collapse:collapse;width:100%;font-size:.87rem;background:#fff}
+table.eleves th{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;background:var(--encre);color:#fff;padding:.5rem .6rem;text-align:left;white-space:nowrap;position:sticky;top:0}
+table.eleves th.col-crit{background:var(--terrain-fonce);text-align:center}
+table.eleves th.col-perf{background:var(--perf);text-align:center}
+table.eleves th.col-vigi{background:var(--vigi-fonce);text-align:center}
+table.eleves td{border-top:1px solid var(--ligne);padding:.35rem .6rem;white-space:nowrap}
+table.eleves tr:nth-child(even) td{background:#F7FAF9}
+table.eleves td.centre{text-align:center}
+table.eleves td.score{font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:1rem;text-align:center;color:var(--terrain-fonce)}
+table.eleves input[type=checkbox]{width:1.05rem;height:1.05rem;accent-color:var(--terrain)}
+table.eleves input.cell{border:1px solid transparent;background:transparent;padding:.2rem .3rem;width:100%;min-width:6.5rem;border-radius:5px;font-size:.87rem}
+table.eleves input.cell.court{min-width:3.2rem;width:3.6rem}
+table.eleves input.cell.perf{min-width:4rem;width:4.6rem;text-align:center;background:#EEF6F5;border-color:#CBE0DE}
+table.eleves input.cell:hover{border-color:var(--ligne)}
+table.eleves input.cell:focus{border-color:var(--terrain);background:#fff}
+.btn-x{border:none;background:none;color:var(--alerte);cursor:pointer;font-size:1rem;padding:.1rem .3rem}
+
+/* ---------- onglets critères ---------- */
+.onglets{display:flex;gap:.2rem;border-bottom:2px solid var(--ligne);margin-bottom:1rem;flex-wrap:wrap}
+.onglets button{background:none;border:none;color:var(--encre-2);font-weight:600;padding:.5rem .95rem;border-bottom:3px solid transparent;border-radius:0;font-size:.92rem}
+.onglets button:hover{color:var(--encre);background:#F0F3F2}
+.onglets button.actif{color:var(--terrain-fonce);border-bottom-color:var(--terrain)}
+.onglets button .badge{display:inline-block;min-width:1.3em;padding:.05em .35em;margin-left:.35em;border-radius:9px;background:var(--ligne);color:var(--encre);font-size:.75rem}
+.onglets button.actif .badge{background:var(--terrain);color:#fff}
+.panneau{display:none}
+.panneau.actif{display:block}
+.panneau > .intro{font-size:.84rem;color:var(--encre-2);margin-bottom:.8rem;max-width:70ch}
+
+.crit-liste{display:flex;flex-direction:column;gap:.45rem;margin-bottom:.9rem}
+.crit-item{display:flex;align-items:center;gap:.6rem;border:1px solid var(--ligne);border-radius:7px;padding:.45rem .65rem;font-size:.87rem;background:#FAFCFB;flex-wrap:wrap}
+.crit-item .nom{font-weight:600}
+.crit-item .pts{font-family:'Barlow Condensed',sans-serif;font-weight:700;background:var(--terrain);color:#fff;border-radius:6px;padding:.05rem .45rem}
+.crit-item .pts.perf{background:var(--perf)}
+.crit-item select{font-size:.8rem;padding:.25rem .4rem}
+.crit-item .pastille-vigi{width:.75rem;height:.75rem;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.25)}
+.crit-item .detail{font-size:.78rem;color:var(--encre-2)}
+.crit-vide{font-size:.84rem;color:var(--encre-2);font-style:italic;margin-bottom:.9rem}
+
+/* paliers de barème */
+.paliers{flex-basis:100%;border-top:1px dashed var(--ligne);margin-top:.4rem;padding-top:.45rem;display:flex;flex-direction:column;gap:.3rem}
+.palier{display:flex;gap:.45rem;align-items:center;font-size:.82rem;color:var(--encre-2)}
+.palier input{width:78px;padding:.22rem .4rem;font-size:.82rem}
+.palier .fleche{font-weight:700;color:var(--perf)}
+
+/* paires */
+.paire-item{display:flex;align-items:center;gap:.6rem;border:1px solid var(--ligne);border-radius:7px;padding:.45rem .65rem;font-size:.88rem;background:#FAFCFB}
+.paire-item .lien{font-family:'Barlow Condensed',sans-serif;font-weight:700;padding:.05rem .5rem;border-radius:6px;color:#fff}
+.paire-item .lien.ensemble{background:var(--ok)}
+.paire-item .lien.eviter{background:var(--alerte)}
+
+/* ---------- barre des compositions ---------- */
+.compo-barre{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;padding:.75rem .95rem;background:#EAF2F8;border:1px solid #C9DEEE;border-radius:8px;margin-bottom:1.1rem}
+.compo-barre select{min-width:210px;font-weight:600}
+.compo-barre .puce-seq{font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:.8rem;color:var(--terrain-fonce)}
+
+/* ---------- composition ---------- */
+.compo-grille{display:flex;gap:1.6rem;flex-wrap:wrap;align-items:flex-start}
+.compo-bloc{border:1px solid var(--ligne);border-radius:8px;padding:.8rem .95rem;background:#FAFCFB;min-width:220px}
+.compo-bloc h3{font-size:1rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;color:var(--encre-2)}
+.radio-ligne{display:flex;align-items:flex-start;gap:.45rem;margin-bottom:.4rem;font-size:.88rem;cursor:pointer}
+.radio-ligne input{margin-top:.2rem;accent-color:var(--terrain)}
+.radio-ligne small{display:block;color:var(--encre-2)}
+
+/* ---------- groupes ---------- */
+#zoneGroupes{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:1rem}
+.groupe{background:#fff;border:1px solid var(--ligne);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s, transform .15s}
+.groupe.survol-drop{box-shadow:0 0 0 3px var(--sifflet);transform:scale(1.01)}
+.groupe .chasuble{padding:.55rem .9rem .5rem;color:#fff;position:relative}
+.groupe .chasuble::after{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:64px;height:13px;background:var(--fond);border-radius:0 0 32px 32px}
+.groupe .chasuble h3{font-size:1.25rem;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:baseline;gap:.5rem}
+.groupe .chasuble .effectif{font-size:.85rem;font-weight:500;opacity:.9;font-family:'Barlow',sans-serif}
+.groupe .stats{display:flex;gap:.9rem;flex-wrap:wrap;padding:.45rem .9rem;border-bottom:1px solid var(--ligne);background:#FAFCFB;font-size:.78rem;color:var(--encre-2)}
+.groupe .stats b{color:var(--encre);font-size:.88rem}
+.groupe .liste{padding:.6rem .7rem;display:flex;flex-direction:column;gap:.35rem;min-height:70px;flex:1}
+.dossard{display:flex;align-items:center;gap:.5rem;border:1px solid var(--ligne);border-radius:7px;padding:.32rem .55rem;font-size:.86rem;background:#fff;cursor:grab}
+.dossard:active{cursor:grabbing}
+.dossard.verrou{background:#FDF6E3;border-color:#E4CF8F}
+.dossard .numero{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.95rem;min-width:1.9rem;text-align:center;border-radius:5px;color:#fff;padding:.05rem .2rem;flex:none}
+.dossard .identite{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dossard .drapeaux{display:flex;gap:.2rem;flex:none}
+.dossard .drapeaux span{width:.68rem;height:.68rem;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.25)}
+.dossard .btn-verrou{border:none;background:none;cursor:pointer;font-size:.9rem;padding:0 .1rem;opacity:.55;flex:none}
+.dossard .btn-verrou:hover{opacity:1}
+.legende-vigi{display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;color:var(--encre-2);margin-top:.8rem}
+.legende-vigi span.puce{width:.7rem;height:.7rem;border-radius:50%;display:inline-block;margin-right:.3rem;border:1px solid rgba(0,0,0,.25);vertical-align:-1px}
+#alertePaires{display:none;background:#FBEEEA;border:1px solid #E4B3A6;color:#7A3324;border-radius:8px;padding:.6rem .9rem;font-size:.85rem;margin-bottom:1rem}
+#alertePaires.visible{display:block}
+
+/* ---------- barre d'actions groupes ---------- */
+.barre-actions{display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem}
+.barre-actions .separateur{flex:1}
+.barre-actions label.champ{font-size:.72rem}
+.barre-actions label.champ input{width:58px;padding:.32rem .4rem}
+
+/* ---------- fenêtre modale ---------- */
+dialog{border:none;border-radius:var(--radius);padding:0;max-width:520px;width:92%;box-shadow:0 18px 50px rgba(10,30,40,.35)}
+dialog::backdrop{background:rgba(12,28,34,.55)}
+dialog .d-titre{background:var(--encre);color:#fff;padding:.8rem 1.1rem;font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;text-transform:uppercase;letter-spacing:.05em}
+dialog .d-corps{padding:1.1rem}
+dialog .d-pied{padding:.8rem 1.1rem;border-top:1px solid var(--ligne);display:flex;justify-content:flex-end;gap:.6rem}
+.map-ligne{display:grid;grid-template-columns:1fr 1.4fr;gap:.7rem;align-items:center;margin-bottom:.6rem;font-size:.9rem}
+.map-ligne .etiquette{font-weight:600}
+.map-ligne .etiquette small{display:block;font-weight:400;color:var(--encre-2)}
+
+/* ---------- messages ---------- */
+#toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--encre);color:#fff;padding:.6rem 1.1rem;border-radius:8px;font-size:.88rem;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;z-index:60;max-width:90%}
+#toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.alerte{background:var(--alerte)}
+
+footer.app{max-width:1280px;margin:0 auto;padding:0 1.6rem 2rem;font-size:.78rem;color:var(--encre-2)}
+
+/* ---------- impression ---------- */
+@media print{
+  body{background:#fff}
+  header.app,.etape,.barre-actions,footer.app,#toast,#alertePaires{display:none !important}
+  main{padding:0;max-width:none}
+  #sectionGroupes{display:block !important}
+  #zoneGroupes{display:grid;grid-template-columns:repeat(2,1fr);gap:.6cm}
+  .groupe{break-inside:avoid;border:1.5px solid #333}
+  .dossard{cursor:default}
+  .dossard .btn-verrou{display:none}
+  #entetePrint{display:block !important;margin-bottom:.5cm}
+  #entetePrint h1{font-size:16pt}
+  #entetePrint .meta{font-size:9pt;color:#444}
+}
+#entetePrint{display:none}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="surtitre">EPS · Outil de composition</div>
+  <h1>Groupes EPS</h1>
+  <div class="sous">Constitution de groupes au sein d'une classe — niveaux, performances, vigilances et paires. Aucune donnée ne quitte ce navigateur.</div>
+</header>
+
+<main>
+
+<!-- ÉTAPE 1 : ÉLÈVES -->
+<section class="etape" id="sectionEleves">
+  <div class="bandeau">
+    <span class="num">1</span>
+    <h2>La classe</h2>
+    <span class="aide" id="compteurEleves">0 élève</span>
+  </div>
+  <div class="corps">
+    <div class="import-zone" id="zoneImport" tabindex="0" role="button" aria-label="Importer un fichier Excel ou CSV">
+      <strong>Déposer ici le fichier de la classe</strong> (Excel .xlsx / .xls ou .csv)<br>
+      <span class="note">ou cliquer pour choisir un fichier — extraction Pronote acceptée. La première ligne doit contenir les en-têtes de colonnes.</span>
+      <input type="file" id="fichierClasse" accept=".xlsx,.xls,.csv" hidden>
+    </div>
+    <div class="rangee" style="margin-top:.9rem">
+      <button class="secondaire" id="btnAjoutEleve">+ Ajouter un élève à la main</button>
+      <button class="danger" id="btnViderClasse">Vider la liste</button>
+    </div>
+    <div class="table-scroll" style="margin-top:.9rem" id="conteneurTable" hidden>
+      <table class="eleves" id="tableEleves">
+        <thead id="enteteTable"></thead>
+        <tbody id="corpsTable"></tbody>
+      </table>
+    </div>
+    <div class="pastille-aide" id="aideCritTable" hidden>
+      Cochez les critères et saisissez les performances directement dans le tableau. La colonne <b>Score</b> se met à jour automatiquement.
+    </div>
+  </div>
+</section>
+
+<!-- ÉTAPE 2 : CRITÈRES -->
+<section class="etape" id="sectionCriteres">
+  <div class="bandeau">
+    <span class="num">2</span>
+    <h2>Les critères</h2>
+    <span class="aide">Créez vos propres critères, puis renseignez-les élève par élève dans le tableau ci-dessus.</span>
+  </div>
+  <div class="corps">
+
+    <div class="onglets" role="tablist">
+      <button class="actif" data-onglet="bonif" role="tab">Bonifications<span class="badge" id="badgeBonif">0</span></button>
+      <button data-onglet="perf" role="tab">Performances chiffrées<span class="badge" id="badgePerf">0</span></button>
+      <button data-onglet="vigi" role="tab">Vigilances<span class="badge" id="badgeVigi">0</span></button>
+      <button data-onglet="paires" role="tab">Paires d'élèves<span class="badge" id="badgePaires">0</span></button>
+    </div>
+
+    <!-- Onglet bonifications -->
+    <div class="panneau actif" data-panneau="bonif">
+      <p class="intro">Une bonification est une case à cocher qui ajoute des points fixes au score de l'élève (pratique en club, rôle de leader, malus possible avec des points négatifs…).</p>
+      <div class="crit-liste" id="listeBonif"></div>
+      <div class="rangee">
+        <label class="champ">Intitulé
+          <input type="text" id="nomBonif" placeholder="Ex. : Pratique en club" style="width:200px">
+        </label>
+        <label class="champ">Points
+          <input type="number" id="ptsBonif" value="1" step="1" style="width:75px">
+        </label>
+        <button id="btnAjoutBonif">Ajouter</button>
+      </div>
+    </div>
+
+    <!-- Onglet performances -->
+    <div class="panneau" data-panneau="perf">
+      <p class="intro">Une performance chiffrée est le résultat d'un test diagnostique saisi élève par élève (temps au 50&nbsp;m, distance en demi-fond, nombre de traversées…). Elle est convertie en points soit par <b>classement automatique</b> (le meilleur reçoit le maximum de points, le plus faible 0, les autres proportionnellement), soit par un <b>barème à paliers</b> que vous définissez. Les temps peuvent être saisis en secondes (12,4) ou en minutes:secondes (2:35).</p>
+      <div class="crit-liste" id="listePerf"></div>
+      <div class="rangee">
+        <label class="champ">Intitulé
+          <input type="text" id="nomPerf" placeholder="Ex. : 50 m nage libre" style="width:180px">
+        </label>
+        <label class="champ">Unité
+          <input type="text" id="unitePerf" placeholder="s, m, tours…" style="width:90px">
+        </label>
+        <label class="champ">Points max
+          <input type="number" id="ptsPerf" value="5" min="1" step="1" style="width:75px">
+        </label>
+        <label class="champ">Sens
+          <select id="sensPerf" style="width:230px">
+            <option value="haut">Valeur haute = meilleure (distance…)</option>
+            <option value="bas">Valeur basse = meilleure (temps…)</option>
+          </select>
+        </label>
+        <label class="champ">Conversion
+          <select id="convPerf" style="width:200px">
+            <option value="classement">Classement automatique</option>
+            <option value="bareme">Barème à paliers</option>
+          </select>
+        </label>
+        <button id="btnAjoutPerf">Ajouter</button>
+      </div>
+    </div>
+
+    <!-- Onglet vigilances -->
+    <div class="panneau" data-panneau="vigi">
+      <p class="intro">Une vigilance signale un besoin particulier (PAI, asthme, handicap moteur, inaptitude partielle…). Pour chacune, choisissez la règle de répartition dans les groupes. Privilégiez des intitulés neutres (« aménagement type A ») plutôt qu'un diagnostic&nbsp;: ces informations relèvent des données de santé.</p>
+      <div class="crit-liste" id="listeVigi"></div>
+      <div class="rangee">
+        <label class="champ">Intitulé
+          <input type="text" id="nomVigi" placeholder="Ex. : Aménagement type A" style="width:200px">
+        </label>
+        <label class="champ">Règle de répartition
+          <select id="modeVigi" style="width:220px">
+            <option value="repartir">Répartir dans tous les groupes</option>
+            <option value="regrouper">Regrouper dans un même groupe</option>
+            <option value="libre">Sans contrainte</option>
+          </select>
+        </label>
+        <button id="btnAjoutVigi">Ajouter</button>
+      </div>
+    </div>
+
+    <!-- Onglet paires -->
+    <div class="panneau" data-panneau="paires">
+      <p class="intro">Les paires imposent des contraintes fortes&nbsp;: <b>toujours ensemble</b> (binôme d'entraide, élève accompagnant un camarade) ou <b>à séparer</b> (conflits, dynamique de classe). Elles sont appliquées en dernier et prévalent sur l'équilibre des niveaux. Un avertissement s'affiche si une paire ne peut pas être satisfaite.</p>
+      <div class="crit-liste" id="listePaires"></div>
+      <div class="rangee">
+        <label class="champ">Élève 1
+          <select id="paireA" style="width:200px"></select>
+        </label>
+        <label class="champ">Élève 2
+          <select id="paireB" style="width:200px"></select>
+        </label>
+        <label class="champ">Contrainte
+          <select id="typePaire" style="width:180px">
+            <option value="ensemble">Toujours ensemble</option>
+            <option value="eviter">À séparer</option>
+          </select>
+        </label>
+        <button id="btnAjoutPaire">Ajouter</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ÉTAPE 3 : COMPOSITION -->
+<section class="etape" id="sectionCompo">
+  <div class="bandeau">
+    <span class="num">3</span>
+    <h2>La composition</h2>
+    <span class="aide">Une composition par séquence / APSA : les groupes de natation ne sont pas ceux de badminton.</span>
+  </div>
+  <div class="corps">
+
+    <div class="compo-barre">
+      <span class="puce-seq">Séquence / APSA</span>
+      <select id="selCompo"></select>
+      <button class="secondaire" id="btnCompoNouvelle">+ Nouvelle</button>
+      <button class="secondaire" id="btnCompoDupliquer">⧉ Dupliquer</button>
+      <button class="secondaire" id="btnCompoRenommer">✎ Renommer</button>
+      <button class="danger" id="btnCompoSupprimer">✕ Supprimer</button>
+    </div>
+
+    <div class="compo-grille">
+      <div class="compo-bloc">
+        <h3>Nombre de groupes</h3>
+        <input type="number" id="nbGroupes" value="4" min="2" max="10" style="width:80px;font-size:1.1rem;font-weight:700">
+      </div>
+      <div class="compo-bloc" style="flex:1;min-width:300px">
+        <h3>Type de groupes</h3>
+        <label class="radio-ligne"><input type="radio" name="modeGroupes" value="homogene" checked>
+          <span><b>Groupes de niveau (homogènes)</b><small>Les élèves de score proche sont réunis : le groupe A rassemble les scores les plus élevés, le dernier groupe les plus faibles.</small></span>
+        </label>
+        <label class="radio-ligne"><input type="radio" name="modeGroupes" value="heterogene">
+          <span><b>Groupes équilibrés (hétérogènes)</b><small>Chaque groupe mélange les niveaux : les moyennes de score des groupes sont proches.</small></span>
+        </label>
+      </div>
+      <div class="compo-bloc">
+        <h3>Options</h3>
+        <label class="radio-ligne"><input type="checkbox" id="optMixite">
+          <span><b>Équilibrer filles / garçons</b><small>Actif si la colonne « sexe » est renseignée.</small></span>
+        </label>
+      </div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:.7rem;flex-wrap:wrap">
+      <button class="principal" id="btnComposer">Composer les groupes</button>
+      <span class="note" style="align-self:center">Les élèves verrouillés (🔒) conservent leur groupe lors d'une nouvelle composition.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ÉTAPE 4 : RÉSULTAT -->
+<section class="etape" id="sectionGroupes" hidden>
+  <div class="bandeau">
+    <span class="num">4</span>
+    <h2>Les groupes <span id="titreCompoActive" style="color:var(--terrain);font-size:1.05rem"></span></h2>
+    <span class="aide">Glissez-déposez un élève d'un groupe à l'autre pour ajuster. 🔒 fige un élève dans son groupe.</span>
+  </div>
+  <div class="corps">
+    <div class="barre-actions">
+      <button class="secondaire" id="btnRecomposer">↻ Recomposer (hors verrouillés)</button>
+      <span class="separateur"></span>
+      <label class="champ">Séances
+        <input type="number" id="nbSeances" value="3" min="1" max="6">
+      </label>
+      <button class="secondaire" id="btnFeuille">📋 Feuille de terrain (PDF)</button>
+      <button class="secondaire" id="btnImprimer">🖨 Imprimer</button>
+      <button id="btnExportPdf">⬇ Exporter en PDF</button>
+      <button id="btnExportXlsx">⬇ Exporter en Excel</button>
+    </div>
+    <div id="alertePaires"></div>
+    <div id="entetePrint">
+      <h1>Groupes EPS — <span id="printClasse"></span></h1>
+      <div class="meta" id="printMeta"></div>
+    </div>
+    <div id="zoneGroupes"></div>
+    <div class="legende-vigi" id="legendeVigi"></div>
+  </div>
+</section>
+
+<!-- SAUVEGARDE -->
+<section class="etape">
+  <div class="bandeau">
+    <span class="num" style="background:var(--encre-2)">⛁</span>
+    <h2>Sauvegarde du travail</h2>
+    <span class="aide">Le fichier de sauvegarde contient élèves, critères, paires et toutes les compositions. À conserver sur le réseau de l'établissement (données nominatives).</span>
+  </div>
+  <div class="corps rangee">
+    <label class="champ">Nom de la classe
+      <input type="text" id="nomClasse" placeholder="Ex. : 5e B" style="width:140px">
+    </label>
+    <button class="secondaire" id="btnSauver">⬇ Enregistrer le projet (.json)</button>
+    <button class="secondaire" id="btnCharger">⬆ Reprendre un projet</button>
+    <input type="file" id="fichierProjet" accept=".json" hidden>
+  </div>
+</section>
+
+</main>
+
+<footer class="app">
+  Outil autonome : fonctionne hors connexion une fois ouvert, aucune donnée n'est transmise à un serveur. Les données élèves restent dans cette page ; pensez à enregistrer le projet avant de fermer. — Collège Jean Jaurès, Gençay.
+</footer>
+
+<!-- Fenêtre de correspondance des colonnes -->
+<dialog id="dlgMapping">
+  <div class="d-titre">Correspondance des colonnes</div>
+  <div class="d-corps">
+    <p class="note" style="margin-bottom:.8rem">Indiquez à quelle colonne du fichier correspond chaque information. Seuls Nom et Prénom sont indispensables.</p>
+    <div class="map-ligne"><span class="etiquette">Nom <small>obligatoire</small></span><select id="mapNom"></select></div>
+    <div class="map-ligne"><span class="etiquette">Prénom <small>obligatoire</small></span><select id="mapPrenom"></select></div>
+    <div class="map-ligne"><span class="etiquette">Âge / naissance <small>facultatif</small></span><select id="mapAge"></select></div>
+    <div class="map-ligne"><span class="etiquette">Sexe <small>facultatif — F / G</small></span><select id="mapSexe"></select></div>
+    <p class="note" id="apercuImport"></p>
+  </div>
+  <div class="d-pied">
+    <button class="secondaire" id="btnAnnulerImport">Annuler</button>
+    <button class="principal" id="btnValiderImport">Importer les élèves</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+/* ================= ÉTAT ================= */
+const etat = {
+  eleves: [],    // {id, nom, prenom, age, sexe, crits:{critId: true|"valeur"}, groupe, verrou} (groupe/verrou = composition active)
+  criteres: [],  // {id, nom, type:'bonif'|'perf'|'vigi', points, mode, couleur, unite, sens, conversion, paliers:[{seuil,pts}]}
+  paires: [],    // {id, type:'ensemble'|'eviter', a, b}
+  compos: [],    // {id, nom, nbGroupes, mode, mixite, compose, affect:{eleveId:groupe}, verrous:{eleveId:true}}
+  compoActiveId: null,
+  compose: false
+};
+let prochainId = 1;
+
+const COULEURS_GROUPES = [
+  {nom:'A', fond:'#2372B9', texte:'#fff'},
+  {nom:'B', fond:'#D93829', texte:'#fff'},
+  {nom:'C', fond:'#E0A800', texte:'#1d1d1d'},
+  {nom:'D', fond:'#3A9B5C', texte:'#fff'},
+  {nom:'E', fond:'#8A4FBE', texte:'#fff'},
+  {nom:'F', fond:'#E07B2A', texte:'#fff'},
+  {nom:'G', fond:'#1FA3A3', texte:'#fff'},
+  {nom:'H', fond:'#C2417F', texte:'#fff'},
+  {nom:'I', fond:'#5B6B75', texte:'#fff'},
+  {nom:'J', fond:'#7A5C2E', texte:'#fff'}
+];
+const COULEURS_VIGI = ['#B3402A','#8A4FBE','#1FA3A3','#C2417F','#E07B2A','#5B7F2E','#3B5BA5','#7A5C2E'];
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function toast(msg, alerte=false){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'visible' + (alerte ? ' alerte' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.className=''; }, 3600);
+}
+function echap(s){ return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function parId(id){ return etat.eleves.find(e=>e.id===id); }
+
+/* ================= SCORE ================= */
+function valeurNum(v){
+  if(v == null || v === '' || v === true) return null;
+  let s = String(v).trim().replace(',', '.');
+  const t = s.match(/^(\d+):(\d{1,2}(?:\.\d+)?)$/); // minutes:secondes
+  if(t) return (+t[1])*60 + (+t[2]);
+  const x = parseFloat(s);
+  return isNaN(x) ? null : x;
+}
+function pointsPerf(c, el){
+  const v = valeurNum(el.crits[c.id]);
+  if(v == null) return 0;
+  if(c.conversion === 'bareme'){
+    let meilleurs = 0;
+    (c.paliers || []).forEach(p=>{
+      const seuil = valeurNum(p.seuil), pts = parseFloat(String(p.pts).replace(',','.'));
+      if(seuil == null || isNaN(pts)) return;
+      const atteint = c.sens === 'haut' ? v >= seuil : v <= seuil;
+      if(atteint && pts > meilleurs) meilleurs = pts;
+    });
+    return meilleurs;
+  }
+  // classement automatique : le meilleur reçoit c.points, le plus faible 0
+  const vals = etat.eleves.map(e=>valeurNum(e.crits[c.id])).filter(x=>x!=null);
+  if(vals.length <= 1) return c.points;
+  const pires = vals.filter(x=> c.sens === 'haut' ? x < v : x > v).length;
+  const egaux = vals.filter(x=> x === v).length;
+  const position = pires + (egaux - 1)/2;
+  return Math.round(position / (vals.length - 1) * c.points);
+}
+function score(el){
+  let s = 0;
+  etat.criteres.forEach(c=>{
+    if(c.type === 'bonif' && el.crits[c.id]) s += c.points;
+    if(c.type === 'perf') s += pointsPerf(c, el);
+  });
+  return s;
+}
+function vigisDe(el){
+  return etat.criteres.filter(c=>c.type==='vigi' && el.crits[c.id]);
+}
+
+/* ================= COMPOSITIONS (séquences / APSA) ================= */
+function compoActive(){ return etat.compos.find(c=>c.id===etat.compoActiveId); }
+
+function nouvelleCompo(nom, modele){
+  const c = {
+    id: 'k'+(prochainId++), nom,
+    nbGroupes: modele ? modele.nbGroupes : 4,
+    mode: modele ? modele.mode : 'homogene',
+    mixite: modele ? modele.mixite : false,
+    compose: modele ? modele.compose : false,
+    affect: modele ? {...modele.affect} : {},
+    verrous: modele ? {...modele.verrous} : {}
+  };
+  etat.compos.push(c);
+  return c;
+}
+function sauverCompoActive(){
+  const c = compoActive();
+  if(!c) return;
+  c.nbGroupes = parseInt($('#nbGroupes').value,10) || 4;
+  c.mode = document.querySelector('input[name=modeGroupes]:checked').value;
+  c.mixite = $('#optMixite').checked;
+  c.compose = etat.compose;
+  c.affect = {}; c.verrous = {};
+  etat.eleves.forEach(e=>{
+    if(e.groupe != null) c.affect[e.id] = e.groupe;
+    if(e.verrou) c.verrous[e.id] = true;
+  });
+}
+function chargerCompo(id){
+  etat.compoActiveId = id;
+  const c = compoActive();
+  $('#nbGroupes').value = c.nbGroupes;
+  $('#optMixite').checked = !!c.mixite;
+  const radio = document.querySelector(`input[name=modeGroupes][value="${c.mode}"]`);
+  if(radio) radio.checked = true;
+  etat.eleves.forEach(e=>{
+    e.groupe = (e.id in c.affect) ? c.affect[e.id] : null;
+    e.verrou = !!c.verrous[e.id];
+  });
+  etat.compose = !!c.compose;
+  $('#sectionGroupes').hidden = !etat.compose;
+  if(etat.compose) rendreGroupes();
+  rendreBarreCompo();
+}
+function rendreBarreCompo(){
+  $('#selCompo').innerHTML = etat.compos.map(c=>
+    `<option value="${c.id}" ${c.id===etat.compoActiveId?'selected':''}>${echap(c.nom)}${c.compose?' ✓':''}</option>`).join('');
+  $('#btnCompoSupprimer').disabled = etat.compos.length <= 1;
+  const c = compoActive();
+  $('#titreCompoActive').textContent = c ? '— ' + c.nom : '';
+}
+$('#selCompo').addEventListener('change', ()=>{
+  sauverCompoActive();
+  chargerCompo($('#selCompo').value);
+});
+$('#btnCompoNouvelle').addEventListener('click', ()=>{
+  const nom = prompt('Nom de la séquence / APSA :', 'Séquence ' + (etat.compos.length + 1));
+  if(!nom) return;
+  sauverCompoActive();
+  const c = nouvelleCompo(nom.trim());
+  chargerCompo(c.id);
+  toast('Composition « ' + c.nom + ' » créée — composez les groupes.');
+});
+$('#btnCompoDupliquer').addEventListener('click', ()=>{
+  sauverCompoActive();
+  const src = compoActive();
+  const nom = prompt('Nom de la nouvelle séquence / APSA :', src.nom + ' (copie)');
+  if(!nom) return;
+  const c = nouvelleCompo(nom.trim(), src);
+  chargerCompo(c.id);
+  toast('Composition dupliquée : groupes et verrous repris comme point de départ.');
+});
+$('#btnCompoRenommer').addEventListener('click', ()=>{
+  const c = compoActive();
+  const nom = prompt('Nouveau nom :', c.nom);
+  if(!nom) return;
+  c.nom = nom.trim();
+  rendreBarreCompo();
+  if(etat.compose) rendreGroupes();
+});
+$('#btnCompoSupprimer').addEventListener('click', ()=>{
+  if(etat.compos.length <= 1) return;
+  const c = compoActive();
+  if(!confirm('Supprimer la composition « ' + c.nom + ' » ? Les groupes de cette séquence seront perdus.')) return;
+  etat.compos = etat.compos.filter(x=>x.id !== c.id);
+  chargerCompo(etat.compos[0].id);
+});
+
+/* ================= IMPORT ================= */
+const zoneImport = $('#zoneImport');
+const inputFichier = $('#fichierClasse');
+zoneImport.addEventListener('click', ()=> inputFichier.click());
+zoneImport.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' ') inputFichier.click(); });
+['dragover','dragenter'].forEach(ev => zoneImport.addEventListener(ev, e=>{ e.preventDefault(); zoneImport.classList.add('survol'); }));
+['dragleave','drop'].forEach(ev => zoneImport.addEventListener(ev, e=>{ e.preventDefault(); zoneImport.classList.remove('survol'); }));
+zoneImport.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) lireFichier(e.dataTransfer.files[0]); });
+inputFichier.addEventListener('change', ()=>{ if(inputFichier.files.length) lireFichier(inputFichier.files[0]); inputFichier.value=''; });
+
+let importTampon = null;
+
+function lireFichier(fichier){
+  const lecteur = new FileReader();
+  lecteur.onload = e => {
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:true});
+      const feuille = wb.Sheets[wb.SheetNames[0]];
+      const lignes = XLSX.utils.sheet_to_json(feuille, {header:1, defval:'', raw:false});
+      const nonVides = lignes.filter(l => l.some(c => String(c).trim() !== ''));
+      if(nonVides.length < 2){ toast('Fichier vide ou sans ligne d\u2019élèves.', true); return; }
+      importTampon = { entetes: nonVides[0].map(h=>String(h).trim()), lignes: nonVides.slice(1) };
+      ouvrirMapping();
+    }catch(err){
+      console.error(err);
+      toast('Lecture impossible : vérifiez que le fichier est bien un Excel ou un CSV.', true);
+    }
+  };
+  lecteur.readAsArrayBuffer(fichier);
+}
+
+function ouvrirMapping(){
+  const selects = {nom:$('#mapNom'), prenom:$('#mapPrenom'), age:$('#mapAge'), sexe:$('#mapSexe')};
+  const options = ['<option value="-1">— non présent —</option>']
+    .concat(importTampon.entetes.map((h,i)=>`<option value="${i}">${echap(h) || '(colonne '+(i+1)+')'}</option>`)).join('');
+  Object.values(selects).forEach(s => s.innerHTML = options);
+  const chercher = re => importTampon.entetes.findIndex(h => re.test(h.toLowerCase()));
+  const iPrenom = chercher(/pr[ée]nom/);
+  const iNom = importTampon.entetes.findIndex((h,i)=> /nom/.test(h.toLowerCase()) && i!==iPrenom);
+  selects.nom.value = iNom; selects.prenom.value = iPrenom;
+  selects.age.value = chercher(/[âa]ge|naiss|n[ée]\(e\)|date de n/);
+  selects.sexe.value = chercher(/sexe|genre|civilit/);
+  $('#apercuImport').textContent = importTampon.lignes.length + ' ligne(s) d\u2019élèves détectée(s).';
+  $('#dlgMapping').showModal();
+}
+
+$('#btnAnnulerImport').addEventListener('click', ()=> $('#dlgMapping').close());
+$('#btnValiderImport').addEventListener('click', ()=>{
+  const iNom = +$('#mapNom').value, iPrenom = +$('#mapPrenom').value;
+  const iAge = +$('#mapAge').value, iSexe = +$('#mapSexe').value;
+  if(iNom < 0 || iPrenom < 0){ toast('Les colonnes Nom et Prénom sont obligatoires.', true); return; }
+  let ajoutes = 0;
+  importTampon.lignes.forEach(l => {
+    const nom = String(l[iNom]||'').trim(), prenom = String(l[iPrenom]||'').trim();
+    if(!nom && !prenom) return;
+    etat.eleves.push({
+      id: prochainId++,
+      nom, prenom,
+      age: iAge >= 0 ? interpreterAge(l[iAge]) : '',
+      sexe: iSexe >= 0 ? interpreterSexe(l[iSexe]) : '',
+      crits: {}, groupe: null, verrou: false
+    });
+    ajoutes++;
+  });
+  $('#dlgMapping').close();
+  rendreTable();
+  toast(ajoutes + ' élève(s) importé(s).');
+});
+
+function interpreterAge(v){
+  if(v === '' || v == null) return '';
+  const s = String(v).trim();
+  if(/^\d{1,2}$/.test(s)) return s;
+  const m = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(m){
+    let annee = +m[3]; if(annee < 100) annee += (annee > 30 ? 1900 : 2000);
+    const naissance = new Date(annee, +m[2]-1, +m[1]);
+    if(!isNaN(naissance)){
+      const auj = new Date();
+      let a = auj.getFullYear() - naissance.getFullYear();
+      if(auj < new Date(auj.getFullYear(), naissance.getMonth(), naissance.getDate())) a--;
+      if(a > 5 && a < 25) return String(a);
+    }
+  }
+  return s;
+}
+function interpreterSexe(v){
+  const s = String(v||'').trim().toLowerCase();
+  if(/^f|fille|mme|mlle/.test(s)) return 'F';
+  if(/^g|^m$|gar|^h|m\./.test(s)) return 'G';
+  return String(v||'').trim().toUpperCase().slice(0,1);
+}
+
+/* ================= TABLE ÉLÈVES ================= */
+function rendreTable(){
+  const nb = etat.eleves.length;
+  $('#compteurEleves').textContent = nb + (nb > 1 ? ' élèves' : ' élève');
+  $('#conteneurTable').hidden = nb === 0;
+  $('#aideCritTable').hidden = nb === 0 || !etat.criteres.length;
+  rendrePaires(); // les listes déroulantes de paires dépendent des élèves
+  if(nb === 0) return;
+
+  const bonifs = etat.criteres.filter(c=>c.type==='bonif');
+  const perfs = etat.criteres.filter(c=>c.type==='perf');
+  const vigis = etat.criteres.filter(c=>c.type==='vigi');
+
+  $('#enteteTable').innerHTML = '<tr>'
+    + '<th>Nom</th><th>Prénom</th><th>Âge</th><th>Sexe</th>'
+    + bonifs.map(c=>`<th class="col-crit">${echap(c.nom)}<br><small>${c.points>=0?'+':''}${c.points}</small></th>`).join('')
+    + perfs.map(c=>`<th class="col-perf">${echap(c.nom)}<br><small>${echap(c.unite||'')} · max ${c.points}</small></th>`).join('')
+    + '<th style="background:var(--terrain)">Score</th>'
+    + vigis.map(c=>`<th class="col-vigi">${echap(c.nom)}</th>`).join('')
+    + '<th></th></tr>';
+
+  $('#corpsTable').innerHTML = etat.eleves.map(el => {
+    const cellsB = bonifs.map(c=>`<td class="centre"><input type="checkbox" data-el="${el.id}" data-crit="${c.id}" ${el.crits[c.id]?'checked':''}></td>`).join('');
+    const cellsP = perfs.map(c=>`<td class="centre"><input class="cell perf" data-el="${el.id}" data-perf="${c.id}" value="${echap(el.crits[c.id]??'')}" placeholder="—"></td>`).join('');
+    const cellsV = vigis.map(c=>`<td class="centre"><input type="checkbox" data-el="${el.id}" data-crit="${c.id}" ${el.crits[c.id]?'checked':''}></td>`).join('');
+    return `<tr>
+      <td><input class="cell" data-el="${el.id}" data-champ="nom" value="${echap(el.nom)}"></td>
+      <td><input class="cell" data-el="${el.id}" data-champ="prenom" value="${echap(el.prenom)}"></td>
+      <td><input class="cell court" data-el="${el.id}" data-champ="age" value="${echap(el.age)}"></td>
+      <td><input class="cell court" data-el="${el.id}" data-champ="sexe" value="${echap(el.sexe)}" maxlength="1"></td>
+      ${cellsB}${cellsP}
+      <td class="score">${score(el)}</td>
+      ${cellsV}
+      <td class="centre"><button class="btn-x" data-suppr="${el.id}" title="Retirer l'élève">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+$('#corpsTable').addEventListener('change', e=>{
+  const cible = e.target;
+  if(cible.matches('input[type=checkbox]')){
+    const el = parId(+cible.dataset.el);
+    if(cible.checked) el.crits[cible.dataset.crit] = true; else delete el.crits[cible.dataset.crit];
+    rendreTable(); if(etat.compose) rendreGroupes();
+  } else if(cible.matches('input.perf')){
+    const el = parId(+cible.dataset.el);
+    const v = cible.value.trim();
+    if(v) el.crits[cible.dataset.perf] = v; else delete el.crits[cible.dataset.perf];
+    rendreTable(); if(etat.compose) rendreGroupes();
+  } else if(cible.matches('input.cell')){
+    const el = parId(+cible.dataset.el);
+    el[cible.dataset.champ] = cible.dataset.champ==='sexe' ? cible.value.trim().toUpperCase() : cible.value.trim();
+    if(etat.compose) rendreGroupes(); else rendrePaires();
+  }
+});
+$('#corpsTable').addEventListener('click', e=>{
+  const b = e.target.closest('[data-suppr]');
+  if(!b) return;
+  const id = +b.dataset.suppr;
+  etat.eleves = etat.eleves.filter(x=>x.id !== id);
+  etat.paires = etat.paires.filter(p=>p.a !== id && p.b !== id);
+  etat.compos.forEach(c=>{ delete c.affect[id]; delete c.verrous[id]; });
+  rendreTable(); if(etat.compose) rendreGroupes();
+});
+
+$('#btnAjoutEleve').addEventListener('click', ()=>{
+  etat.eleves.push({id:prochainId++, nom:'', prenom:'', age:'', sexe:'', crits:{}, groupe:null, verrou:false});
+  rendreTable();
+  const derniere = $('#corpsTable').lastElementChild;
+  if(derniere) derniere.querySelector('input.cell').focus();
+});
+$('#btnViderClasse').addEventListener('click', ()=>{
+  if(!etat.eleves.length) return;
+  if(!confirm('Retirer tous les élèves de la liste ? Les paires et les groupes de toutes les séquences seront effacés.')) return;
+  etat.eleves = []; etat.paires = []; etat.compose = false;
+  etat.compos.forEach(c=>{ c.affect = {}; c.verrous = {}; c.compose = false; });
+  $('#sectionGroupes').hidden = true;
+  rendreTable();
+});
+
+/* ================= ONGLETS ================= */
+$$('.onglets button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    $$('.onglets button').forEach(x=>x.classList.toggle('actif', x===b));
+    $$('.panneau').forEach(p=>p.classList.toggle('actif', p.dataset.panneau === b.dataset.onglet));
+  });
+});
+function majBadges(){
+  $('#badgeBonif').textContent = etat.criteres.filter(c=>c.type==='bonif').length;
+  $('#badgePerf').textContent = etat.criteres.filter(c=>c.type==='perf').length;
+  $('#badgeVigi').textContent = etat.criteres.filter(c=>c.type==='vigi').length;
+  $('#badgePaires').textContent = etat.paires.length;
+}
+
+/* ================= CRITÈRES ================= */
+function rendreCriteres(){
+  const bonifs = etat.criteres.filter(c=>c.type==='bonif');
+  const perfs = etat.criteres.filter(c=>c.type==='perf');
+  const vigis = etat.criteres.filter(c=>c.type==='vigi');
+
+  $('#listeBonif').innerHTML = bonifs.length ? bonifs.map(c=>`
+    <div class="crit-item">
+      <span class="nom">${echap(c.nom)}</span>
+      <span class="pts">${c.points>=0?'+':''}${c.points} pt</span>
+      <input type="number" value="${c.points}" step="1" style="width:64px" data-pts="${c.id}" title="Modifier les points">
+      <span style="flex:1"></span>
+      <button class="btn-x" data-supprcrit="${c.id}" title="Supprimer le critère">✕</button>
+    </div>`).join('') : '<div class="crit-vide">Aucune bonification pour l\u2019instant.</div>';
+
+  $('#listePerf').innerHTML = perfs.length ? perfs.map(c=>{
+    const paliers = c.conversion === 'bareme' ? `
+      <div class="paliers" data-paliers="${c.id}">
+        ${(c.paliers||[]).map((p,i)=>`
+          <div class="palier">à partir de
+            <input type="text" value="${echap(p.seuil)}" data-palier-seuil="${c.id}:${i}" placeholder="seuil"> ${echap(c.unite||'')}
+            <span class="fleche">→</span>
+            <input type="text" value="${echap(p.pts)}" data-palier-pts="${c.id}:${i}" placeholder="points"> pt
+            <button class="btn-x" data-palier-suppr="${c.id}:${i}" title="Retirer ce palier">✕</button>
+          </div>`).join('')}
+        <div><button class="secondaire" style="font-size:.78rem;padding:.28rem .6rem" data-palier-ajout="${c.id}">+ Ajouter un palier</button>
+        <span class="note" style="margin-left:.5rem">${c.sens==='haut'?'Palier atteint si la valeur est supérieure ou égale au seuil.':'Palier atteint si la valeur est inférieure ou égale au seuil (temps).'}</span></div>
+      </div>` : '';
+    return `
+    <div class="crit-item">
+      <span class="nom">${echap(c.nom)}</span>
+      <span class="pts perf">max ${c.points} pt</span>
+      <span class="detail">${echap(c.unite||'sans unité')} · ${c.sens==='haut'?'valeur haute = meilleure':'valeur basse = meilleure'} · ${c.conversion==='bareme'?'barème à paliers':'classement automatique'}</span>
+      <span style="flex:1"></span>
+      <button class="btn-x" data-supprcrit="${c.id}" title="Supprimer le critère">✕</button>
+      ${paliers}
+    </div>`;
+  }).join('') : '<div class="crit-vide">Aucune performance chiffrée pour l\u2019instant.</div>';
+
+  $('#listeVigi').innerHTML = vigis.length ? vigis.map(c=>`
+    <div class="crit-item">
+      <span class="pastille-vigi" style="background:${c.couleur}"></span>
+      <span class="nom">${echap(c.nom)}</span>
+      <select data-mode="${c.id}" title="Règle de répartition">
+        <option value="repartir" ${c.mode==='repartir'?'selected':''}>Répartir dans tous les groupes</option>
+        <option value="regrouper" ${c.mode==='regrouper'?'selected':''}>Regrouper dans un même groupe</option>
+        <option value="libre" ${c.mode==='libre'?'selected':''}>Sans contrainte</option>
+      </select>
+      <span style="flex:1"></span>
+      <button class="btn-x" data-supprcrit="${c.id}" title="Supprimer le critère">✕</button>
+    </div>`).join('') : '<div class="crit-vide">Aucune vigilance pour l\u2019instant.</div>';
+
+  majBadges();
+}
+
+$('#btnAjoutBonif').addEventListener('click', ()=>{
+  const nom = $('#nomBonif').value.trim();
+  const pts = parseInt($('#ptsBonif').value, 10);
+  if(!nom){ toast('Donnez un intitulé à la bonification.', true); return; }
+  if(isNaN(pts)){ toast('Indiquez un nombre de points.', true); return; }
+  etat.criteres.push({id:'c'+(prochainId++), nom, type:'bonif', points:pts});
+  $('#nomBonif').value=''; $('#ptsBonif').value='1';
+  rendreCriteres(); rendreTable();
+});
+$('#btnAjoutPerf').addEventListener('click', ()=>{
+  const nom = $('#nomPerf').value.trim();
+  const pts = parseInt($('#ptsPerf').value, 10);
+  if(!nom){ toast('Donnez un intitulé à la performance.', true); return; }
+  if(isNaN(pts) || pts < 1){ toast('Indiquez un maximum de points (au moins 1).', true); return; }
+  const conv = $('#convPerf').value;
+  etat.criteres.push({
+    id:'c'+(prochainId++), nom, type:'perf', points:pts,
+    unite:$('#unitePerf').value.trim(), sens:$('#sensPerf').value,
+    conversion:conv, paliers: conv==='bareme' ? [{seuil:'', pts:''}] : []
+  });
+  $('#nomPerf').value=''; $('#unitePerf').value=''; $('#ptsPerf').value='5';
+  rendreCriteres(); rendreTable();
+  if(conv==='bareme') toast('Critère créé — définissez maintenant les paliers du barème.');
+});
+$('#btnAjoutVigi').addEventListener('click', ()=>{
+  const nom = $('#nomVigi').value.trim();
+  if(!nom){ toast('Donnez un intitulé à la vigilance.', true); return; }
+  const dejaVigi = etat.criteres.filter(c=>c.type==='vigi').length;
+  etat.criteres.push({id:'c'+(prochainId++), nom, type:'vigi', mode:$('#modeVigi').value,
+    couleur: COULEURS_VIGI[dejaVigi % COULEURS_VIGI.length]});
+  $('#nomVigi').value='';
+  rendreCriteres(); rendreTable();
+});
+
+document.addEventListener('click', e=>{
+  const suppr = e.target.closest('[data-supprcrit]');
+  if(suppr){
+    const c = etat.criteres.find(x=>x.id===suppr.dataset.supprcrit);
+    if(!confirm('Supprimer le critère « '+c.nom+' » ? Les valeurs associées seront perdues.')) return;
+    etat.criteres = etat.criteres.filter(x=>x.id!==c.id);
+    etat.eleves.forEach(el=>delete el.crits[c.id]);
+    rendreCriteres(); rendreTable(); if(etat.compose) rendreGroupes();
+    return;
+  }
+  const ajout = e.target.closest('[data-palier-ajout]');
+  if(ajout){
+    const c = etat.criteres.find(x=>x.id===ajout.dataset.palierAjout);
+    c.paliers.push({seuil:'', pts:''});
+    rendreCriteres();
+    return;
+  }
+  const psuppr = e.target.closest('[data-palier-suppr]');
+  if(psuppr){
+    const [cid, i] = psuppr.dataset.palierSuppr.split(':');
+    const c = etat.criteres.find(x=>x.id===cid);
+    c.paliers.splice(+i, 1);
+    rendreCriteres(); rendreTable(); if(etat.compose) rendreGroupes();
+  }
+});
+document.addEventListener('change', e=>{
+  if(e.target.matches('[data-pts]')){
+    const c = etat.criteres.find(x=>x.id===e.target.dataset.pts);
+    const v = parseInt(e.target.value,10);
+    if(!isNaN(v)){ c.points = v; rendreCriteres(); rendreTable(); if(etat.compose) rendreGroupes(); }
+  }
+  if(e.target.matches('[data-mode]')){
+    const c = etat.criteres.find(x=>x.id===e.target.dataset.mode);
+    c.mode = e.target.value;
+    toast('Règle mise à jour — cliquez sur « Recomposer » pour l\u2019appliquer.');
+  }
+  if(e.target.matches('[data-palier-seuil]')){
+    const [cid, i] = e.target.dataset.palierSeuil.split(':');
+    etat.criteres.find(x=>x.id===cid).paliers[+i].seuil = e.target.value.trim();
+    rendreTable(); if(etat.compose) rendreGroupes();
+  }
+  if(e.target.matches('[data-palier-pts]')){
+    const [cid, i] = e.target.dataset.palierPts.split(':');
+    etat.criteres.find(x=>x.id===cid).paliers[+i].pts = e.target.value.trim();
+    rendreTable(); if(etat.compose) rendreGroupes();
+  }
+});
+
+/* ================= PAIRES ================= */
+function rendrePaires(){
+  const tries = [...etat.eleves].sort((a,b)=> (a.nom+a.prenom).localeCompare(b.nom+b.prenom, 'fr'));
+  const options = '<option value="">— choisir —</option>' + tries.map(e=>
+    `<option value="${e.id}">${echap(e.nom.toUpperCase())} ${echap(e.prenom)}</option>`).join('');
+  const vA = $('#paireA').value, vB = $('#paireB').value;
+  $('#paireA').innerHTML = options; $('#paireB').innerHTML = options;
+  $('#paireA').value = vA; $('#paireB').value = vB;
+
+  $('#listePaires').innerHTML = etat.paires.length ? etat.paires.map(p=>{
+    const a = parId(p.a), b = parId(p.b);
+    if(!a || !b) return '';
+    return `<div class="paire-item">
+      <span>${echap(a.nom.toUpperCase())} ${echap(a.prenom)}</span>
+      <span class="lien ${p.type}">${p.type==='ensemble'?'toujours ensemble':'à séparer'}</span>
+      <span>${echap(b.nom.toUpperCase())} ${echap(b.prenom)}</span>
+      <span style="flex:1"></span>
+      <button class="btn-x" data-supprpaire="${p.id}" title="Supprimer la paire">✕</button>
+    </div>`;
+  }).join('') : '<div class="crit-vide">Aucune paire pour l\u2019instant.</div>';
+  majBadges();
+}
+$('#btnAjoutPaire').addEventListener('click', ()=>{
+  const a = +$('#paireA').value, b = +$('#paireB').value;
+  if(!a || !b){ toast('Choisissez les deux élèves.', true); return; }
+  if(a === b){ toast('Choisissez deux élèves différents.', true); return; }
+  if(etat.paires.some(p=>(p.a===a&&p.b===b)||(p.a===b&&p.b===a))){ toast('Cette paire existe déjà.', true); return; }
+  etat.paires.push({id:'p'+(prochainId++), type:$('#typePaire').value, a, b});
+  $('#paireA').value=''; $('#paireB').value='';
+  rendrePaires();
+  toast('Paire ajoutée — cliquez sur « Composer » ou « Recomposer » pour l\u2019appliquer.');
+});
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-supprpaire]');
+  if(!b) return;
+  etat.paires = etat.paires.filter(p=>p.id !== b.dataset.supprpaire);
+  rendrePaires(); if(etat.compose) rendreGroupes();
+});
+
+/* ================= ALGORITHME DE COMPOSITION ================= */
+function composer(conserverVerrous){
+  const n = Math.min(10, Math.max(2, parseInt($('#nbGroupes').value,10) || 2));
+  $('#nbGroupes').value = n;
+  if(etat.eleves.length < n){ toast('Moins d\u2019élèves que de groupes demandés.', true); return; }
+
+  const mode = document.querySelector('input[name=modeGroupes]:checked').value;
+  const mixite = $('#optMixite').checked;
+
+  const total = etat.eleves.length;
+  const base = Math.floor(total/n), reste = total%n;
+  const capacites = Array.from({length:n}, (_,i)=> base + (i<reste?1:0));
+
+  etat.eleves.forEach(el=>{ if(!conserverVerrous || !el.verrou || el.groupe==null || el.groupe>=n) el.groupe = null; });
+  const groupes = Array.from({length:n}, ()=>[]);
+  etat.eleves.filter(el=>el.groupe!=null).forEach(el=>groupes[el.groupe].push(el));
+
+  const libres = etat.eleves.filter(el=>el.groupe==null).sort((a,b)=> score(b)-score(a) || Math.random()-0.5);
+
+  if(mode === 'homogene'){
+    let iG = 0;
+    libres.forEach(el=>{
+      while(iG < n-1 && groupes[iG].length >= capacites[iG]) iG++;
+      groupes[iG].push(el); el.groupe = iG;
+    });
+  } else {
+    let ordre = [...Array(n).keys()], sens = 1, pos = 0;
+    libres.forEach(el=>{
+      let essais = 0;
+      while(groupes[ordre[pos]].length >= capacites[ordre[pos]] && essais < n){ avancer(); essais++; }
+      const g = ordre[pos];
+      groupes[g].push(el); el.groupe = g;
+      avancer();
+      function avancer(){
+        pos += sens;
+        if(pos >= n){ pos = n-1; sens = -1; }
+        if(pos < 0){ pos = 0; sens = 1; }
+      }
+    });
+  }
+
+  // 1) vigilances
+  etat.criteres.filter(c=>c.type==='vigi' && c.mode==='repartir')
+    .forEach(c=> equilibrerCritere(groupes, el=>!!el.crits[c.id], mode));
+  etat.criteres.filter(c=>c.type==='vigi' && c.mode==='regrouper')
+    .forEach(c=> regrouperCritere(groupes, c));
+
+  // 2) mixité (au mieux)
+  if(mixite) equilibrerCritere(groupes, el=>el.sexe==='F', mode, el=>vigisDe(el).some(v=>v.mode==='regrouper'));
+
+  // 3) paires (contraintes fortes, appliquées en dernier)
+  appliquerPaires(groupes);
+
+  // 4) passe finale de rééquilibrage des vigilances "répartir", sans toucher aux élèves sous contrainte de paire
+  const sousPaire = new Set();
+  etat.paires.forEach(p=>{ sousPaire.add(p.a); sousPaire.add(p.b); });
+  etat.criteres.filter(c=>c.type==='vigi' && c.mode==='repartir')
+    .forEach(c=> equilibrerCritere(groupes, el=>!!el.crits[c.id], mode, el=>sousPaire.has(el.id)));
+
+  etat.compose = true;
+  sauverCompoActive();
+  $('#sectionGroupes').hidden = false;
+  rendreGroupes();
+  if($('#sectionGroupes').scrollIntoView) $('#sectionGroupes').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function equilibrerCritere(groupes, possede, mode, exclu){
+  exclu = exclu || (()=>false);
+  for(let garde=0; garde<60; garde++){
+    const comptes = groupes.map(g=>g.filter(possede).length);
+    const max = Math.max(...comptes), min = Math.min(...comptes);
+    if(max - min <= 1) break;
+    const gMax = comptes.indexOf(max), gMin = comptes.indexOf(min);
+    const sortants = groupes[gMax].filter(el=>possede(el) && !el.verrou && !exclu(el));
+    const entrants = groupes[gMin].filter(el=>!possede(el) && !el.verrou && !exclu(el));
+    if(!sortants.length || !entrants.length) break;
+    let meilleur = null, ecart = Infinity;
+    sortants.forEach(s=> entrants.forEach(e=>{
+      const d = Math.abs(score(s)-score(e));
+      if(d < ecart){ ecart = d; meilleur = [s,e]; }
+    }));
+    echanger(groupes, meilleur[0], gMax, meilleur[1], gMin);
+  }
+}
+
+function regrouperCritere(groupes, c){
+  const possede = el=>!!el.crits[c.id];
+  const comptes = groupes.map(g=>g.filter(possede).length);
+  if(comptes.reduce((a,b)=>a+b,0) === 0) return;
+  const cible = comptes.indexOf(Math.max(...comptes));
+  for(let garde=0; garde<60; garde++){
+    const gSource = groupes.findIndex((g,i)=> i!==cible && g.some(el=>possede(el) && !el.verrou));
+    if(gSource < 0) break;
+    const sortant = groupes[gSource].find(el=>possede(el) && !el.verrou);
+    const entrants = groupes[cible].filter(el=>!possede(el) && !el.verrou);
+    if(!entrants.length) break;
+    let meilleur = entrants[0], ecart = Infinity;
+    entrants.forEach(e=>{ const d = Math.abs(score(sortant)-score(e)); if(d<ecart){ecart=d; meilleur=e;} });
+    echanger(groupes, sortant, gSource, meilleur, cible);
+  }
+}
+
+function echanger(groupes, a, gA, b, gB){
+  groupes[gA] = groupes[gA].filter(x=>x!==a);
+  groupes[gB] = groupes[gB].filter(x=>x!==b);
+  groupes[gA].push(b); b.groupe = gA;
+  groupes[gB].push(a); a.groupe = gB;
+}
+
+/* --- paires : « toujours ensemble » puis « à séparer » --- */
+function violeEviter(el, g, groupes, sansId){
+  return etat.paires.some(p=>{
+    if(p.type !== 'eviter') return false;
+    const autre = p.a===el.id ? p.b : (p.b===el.id ? p.a : null);
+    if(autre == null || autre === sansId) return false;
+    return groupes[g].some(e=>e.id===autre);
+  });
+}
+function appliquerPaires(groupes){
+  const idsEnsemble = new Set();
+  etat.paires.forEach(p=>{ if(p.type==='ensemble'){ idsEnsemble.add(p.a); idsEnsemble.add(p.b); } });
+
+  // toujours ensemble : on rapproche le second du premier, par échanges à score proche
+  for(let garde=0; garde<60; garde++){
+    let bouge = false;
+    for(const p of etat.paires.filter(x=>x.type==='ensemble')){
+      const a = parId(p.a), b = parId(p.b);
+      if(!a || !b || a.groupe==null || b.groupe==null || a.groupe===b.groupe) continue;
+      const tenter = (mobile, cible)=>{
+        if(mobile.verrou) return false;
+        const candidats = groupes[cible.groupe].filter(e=>!e.verrou && !idsEnsemble.has(e.id));
+        if(!candidats.length) return false;
+        let best = candidats[0], ec = Infinity;
+        candidats.forEach(e=>{ const d = Math.abs(score(e)-score(mobile)); if(d<ec){ec=d; best=e;} });
+        echanger(groupes, mobile, mobile.groupe, best, cible.groupe);
+        return true;
+      };
+      if(tenter(b, a) || tenter(a, b)) bouge = true;
+    }
+    if(!bouge) break;
+  }
+
+  // à séparer : on éloigne l'un des deux par le meilleur échange qui ne crée pas de nouvelle violation
+  for(let garde=0; garde<60; garde++){
+    let bouge = false;
+    for(const p of etat.paires.filter(x=>x.type==='eviter')){
+      const a = parId(p.a), b = parId(p.b);
+      if(!a || !b || a.groupe==null || a.groupe !== b.groupe) continue;
+      const mobiles = [a, b].filter(x=>!x.verrou && !idsEnsemble.has(x.id));
+      let meilleur = null, ecart = Infinity;
+      mobiles.forEach(mobile=>{
+        groupes.forEach((g, ig)=>{
+          if(ig === mobile.groupe) return;
+          if(violeEviter(mobile, ig, groupes, null)) return;
+          g.forEach(e=>{
+            if(e.verrou || idsEnsemble.has(e.id)) return;
+            if(violeEviter(e, mobile.groupe, groupes, mobile.id)) return;
+            const d = Math.abs(score(e)-score(mobile));
+            if(d < ecart){ ecart = d; meilleur = [mobile, e, ig]; }
+          });
+        });
+      });
+      if(meilleur){
+        echanger(groupes, meilleur[0], meilleur[0].groupe, meilleur[1], meilleur[2]);
+        bouge = true;
+      }
+    }
+    if(!bouge) break;
+  }
+}
+
+function violationsPaires(){
+  const out = [];
+  etat.paires.forEach(p=>{
+    const a = parId(p.a), b = parId(p.b);
+    if(!a || !b || a.groupe==null || b.groupe==null) return;
+    if(p.type==='ensemble' && a.groupe !== b.groupe)
+      out.push(`${a.nom.toUpperCase()} ${a.prenom} et ${b.nom.toUpperCase()} ${b.prenom} devraient être <b>ensemble</b>`);
+    if(p.type==='eviter' && a.groupe === b.groupe)
+      out.push(`${a.nom.toUpperCase()} ${a.prenom} et ${b.nom.toUpperCase()} ${b.prenom} devraient être <b>séparés</b>`);
+  });
+  return out;
+}
+
+$('#btnComposer').addEventListener('click', ()=>composer(false));
+$('#btnRecomposer').addEventListener('click', ()=>composer(true));
+
+/* ================= AFFICHAGE DES GROUPES ================= */
+function rendreGroupes(){
+  const n = Math.max(1, 1 + Math.max(-1, ...etat.eleves.map(e=>e.groupe==null?-1:e.groupe)));
+  const zone = $('#zoneGroupes');
+  const vigis = etat.criteres.filter(c=>c.type==='vigi');
+  let html = '';
+  for(let g=0; g<n; g++){
+    const membres = etat.eleves.filter(e=>e.groupe===g).sort((a,b)=>score(b)-score(a));
+    const coul = COULEURS_GROUPES[g % COULEURS_GROUPES.length];
+    const scores = membres.map(score);
+    const moy = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
+    const nbF = membres.filter(e=>e.sexe==='F').length, nbG = membres.filter(e=>e.sexe==='G').length;
+    const statsVigi = vigis.map(c=>{
+      const k = membres.filter(e=>e.crits[c.id]).length;
+      return k ? `<span title="${echap(c.nom)}"><span style="background:${c.couleur};width:.65rem;height:.65rem;border-radius:50%;display:inline-block;margin-right:.2rem;border:1px solid rgba(0,0,0,.25);vertical-align:-1px"></span><b>${k}</b></span>` : '';
+    }).filter(Boolean).join('');
+    html += `<div class="groupe" data-groupe="${g}">
+      <div class="chasuble" style="background:${coul.fond};color:${coul.texte}">
+        <h3>Groupe ${coul.nom} <span class="effectif">${membres.length} élève${membres.length>1?'s':''}</span></h3>
+      </div>
+      <div class="stats">
+        <span>Score moyen <b>${moy}</b></span>
+        ${(nbF+nbG)>0 ? `<span>♀ <b>${nbF}</b> · ♂ <b>${nbG}</b></span>` : ''}
+        ${statsVigi}
+      </div>
+      <div class="liste" data-drop="${g}">
+        ${membres.map(el=>`
+          <div class="dossard ${el.verrou?'verrou':''}" draggable="true" data-drag="${el.id}">
+            <span class="numero" style="background:${coul.fond};color:${coul.texte}">${score(el)}</span>
+            <span class="identite">${echap(el.nom.toUpperCase())} ${echap(el.prenom)}${el.age?` <small style="color:var(--encre-2)">· ${echap(el.age)} ans</small>`:''}</span>
+            <span class="drapeaux">${vigisDe(el).map(c=>`<span style="background:${c.couleur}" title="${echap(c.nom)}"></span>`).join('')}</span>
+            <button class="btn-verrou" data-verrou="${el.id}" title="${el.verrou?'Déverrouiller':'Verrouiller dans ce groupe'}">${el.verrou?'🔒':'🔓'}</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  zone.innerHTML = html;
+
+  const violations = violationsPaires();
+  const alerte = $('#alertePaires');
+  if(violations.length){
+    alerte.innerHTML = '<b>⚠ Contraintes de paires non satisfaites :</b> ' + violations.join(' · ')
+      + '. <span style="font-weight:400">Ajustez par glisser-déposer ou déverrouillez les élèves concernés.</span>';
+    alerte.classList.add('visible');
+  } else {
+    alerte.classList.remove('visible');
+    alerte.innerHTML = '';
+  }
+
+  $('#legendeVigi').innerHTML = vigis.length
+    ? '<b style="color:var(--encre)">Vigilances :</b> ' + vigis.map(c=>`<span><span class="puce" style="background:${c.couleur}"></span>${echap(c.nom)} <i>(${{repartir:'réparti',regrouper:'regroupé',libre:'libre'}[c.mode]})</i></span>`).join('')
+    : '';
+  const c = compoActive();
+  $('#titreCompoActive').textContent = c ? '— ' + c.nom : '';
+  $('#printClasse').textContent = [$('#nomClasse').value, c ? c.nom : ''].filter(Boolean).join(' — ');
+  const mode = document.querySelector('input[name=modeGroupes]:checked').value;
+  $('#printMeta').textContent = 'Édité le ' + new Date().toLocaleDateString('fr-FR')
+    + ' — ' + (mode==='homogene' ? 'groupes de niveau homogènes' : 'groupes équilibrés (hétérogènes)') + '.';
+  brancherDragDrop();
+  rendreBarreCompo();
+}
+
+function brancherDragDrop(){
+  $$('.dossard').forEach(d=>{
+    d.addEventListener('dragstart', e=>{
+      e.dataTransfer.setData('text/plain', d.dataset.drag);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+  });
+  $$('#zoneGroupes .groupe').forEach(carte=>{
+    carte.addEventListener('dragover', e=>{ e.preventDefault(); carte.classList.add('survol-drop'); });
+    carte.addEventListener('dragleave', ()=>carte.classList.remove('survol-drop'));
+    carte.addEventListener('drop', e=>{
+      e.preventDefault(); carte.classList.remove('survol-drop');
+      const id = +e.dataTransfer.getData('text/plain');
+      const el = parId(id);
+      const g = +carte.dataset.groupe;
+      if(el && el.groupe !== g){
+        el.groupe = g;
+        sauverCompoActive();
+        rendreGroupes();
+        const v = violationsPaires();
+        if(v.length) toast('Attention : une contrainte de paire n\u2019est plus respectée.', true);
+      }
+    });
+  });
+}
+$('#zoneGroupes').addEventListener('click', e=>{
+  const b = e.target.closest('[data-verrou]');
+  if(!b) return;
+  const el = parId(+b.dataset.verrou);
+  el.verrou = !el.verrou;
+  sauverCompoActive();
+  rendreGroupes();
+});
+
+/* ================= EXPORTS ================= */
+$('#btnImprimer').addEventListener('click', ()=>window.print());
+
+function nomFichierBase(){
+  const c = compoActive();
+  return [($('#nomClasse').value || 'classe'), c ? c.nom : '']
+    .filter(Boolean).join('_')
+    .replace(/[^\wàâäéèêëîïôöùûüç -]/gi,'').trim().replace(/\s+/g,'_') || 'classe';
+}
+
+$('#btnExportXlsx').addEventListener('click', ()=>{
+  if(!etat.compose){ toast('Composez d\u2019abord les groupes.', true); return; }
+  const vigis = etat.criteres.filter(c=>c.type==='vigi');
+  const perfs = etat.criteres.filter(c=>c.type==='perf');
+  const wb = XLSX.utils.book_new();
+  const n = 1 + Math.max(0, ...etat.eleves.map(e=>e.groupe==null?0:e.groupe));
+
+  const entete = ['Groupe','Nom','Prénom','Âge','Sexe']
+    .concat(perfs.map(c=>c.nom + (c.unite?' ('+c.unite+')':'')))
+    .concat(['Score','Vigilances']);
+  const lignes = [entete];
+  for(let g=0; g<n; g++){
+    etat.eleves.filter(e=>e.groupe===g).sort((a,b)=>score(b)-score(a)).forEach(el=>{
+      lignes.push(['Groupe '+COULEURS_GROUPES[g%COULEURS_GROUPES.length].nom, el.nom, el.prenom, el.age, el.sexe]
+        .concat(perfs.map(c=>el.crits[c.id] ?? ''))
+        .concat([score(el), vigisDe(el).map(c=>c.nom).join(', ')]));
+    });
+  }
+  const fs = XLSX.utils.aoa_to_sheet(lignes);
+  fs['!cols'] = [{wch:11},{wch:20},{wch:16},{wch:6},{wch:6}].concat(perfs.map(()=>({wch:12}))).concat([{wch:7},{wch:32}]);
+  XLSX.utils.book_append_sheet(wb, fs, 'Synthèse');
+
+  for(let g=0; g<n; g++){
+    const membres = etat.eleves.filter(e=>e.groupe===g).sort((a,b)=>score(b)-score(a));
+    const lg = [['Nom','Prénom','Âge','Sexe'].concat(perfs.map(c=>c.nom)).concat(['Score','Vigilances'])];
+    membres.forEach(el=>lg.push([el.nom, el.prenom, el.age, el.sexe]
+      .concat(perfs.map(c=>el.crits[c.id] ?? ''))
+      .concat([score(el), vigisDe(el).map(c=>c.nom).join(', ')])));
+    const f = XLSX.utils.aoa_to_sheet(lg);
+    f['!cols'] = [{wch:20},{wch:16},{wch:6},{wch:6}].concat(perfs.map(()=>({wch:12}))).concat([{wch:7},{wch:32}]);
+    XLSX.utils.book_append_sheet(wb, f, ('Groupe '+COULEURS_GROUPES[g%COULEURS_GROUPES.length].nom).slice(0,31));
+  }
+  XLSX.writeFile(wb, `groupes_EPS_${nomFichierBase()}.xlsx`);
+});
+
+/* ---- PDF des groupes ---- */
+function hexRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+
+$('#btnExportPdf').addEventListener('click', ()=>{
+  if(!etat.compose){ toast('Composez d\u2019abord les groupes.', true); return; }
+  if(!window.jspdf){ toast('Bibliothèque PDF non chargée : ouvrez la page avec une connexion internet une première fois.', true); return; }
+  const doc = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
+  const vigis = etat.criteres.filter(c=>c.type==='vigi');
+  const n = 1 + Math.max(0, ...etat.eleves.map(e=>e.groupe==null?0:e.groupe));
+  const mode = document.querySelector('input[name=modeGroupes]:checked').value;
+  const c = compoActive();
+  const titre = 'Groupes EPS' + [$('#nomClasse').value.trim(), c ? c.nom : ''].filter(Boolean).map(x=>' — '+x).join('');
+  const marge = 14;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(22,38,43);
+  doc.text(titre, marge, 18);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,100,105);
+  doc.text('Édité le ' + new Date().toLocaleDateString('fr-FR')
+    + ' — ' + (mode==='homogene' ? 'groupes de niveau homogènes' : 'groupes équilibrés (hétérogènes)')
+    + ' — ' + etat.eleves.length + ' élèves, ' + n + ' groupes.', marge, 24);
+  doc.setDrawColor(27,108,168); doc.setLineWidth(1); doc.line(marge, 27, 210-marge, 27);
+
+  const synthese = [];
+  for(let g=0; g<n; g++){
+    const m = etat.eleves.filter(e=>e.groupe===g);
+    const scores = m.map(score);
+    const moy = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
+    const nbF = m.filter(e=>e.sexe==='F').length, nbG = m.filter(e=>e.sexe==='G').length;
+    const vg = vigis.map(cv=>{ const k=m.filter(e=>e.crits[cv.id]).length; return k? cv.nom+' : '+k : null; }).filter(Boolean).join('  ·  ');
+    synthese.push(['Groupe '+COULEURS_GROUPES[g%COULEURS_GROUPES.length].nom, m.length, moy, (nbF+nbG)? nbF+' / '+nbG : '—', vg || '—']);
+  }
+  doc.autoTable({
+    startY: 31, margin:{left:marge, right:marge},
+    head: [['Groupe','Effectif','Score moyen','Filles / Garçons','Vigilances']],
+    body: synthese,
+    styles:{font:'helvetica', fontSize:8.5, cellPadding:1.6},
+    headStyles:{fillColor:[22,38,43], textColor:255, fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[247,250,249]},
+    theme:'grid'
+  });
+
+  let y = doc.lastAutoTable.finalY + 8;
+  for(let g=0; g<n; g++){
+    const coul = COULEURS_GROUPES[g%COULEURS_GROUPES.length];
+    const membres = etat.eleves.filter(e=>e.groupe===g).sort((a,b)=>score(b)-score(a));
+    if(y + 14 + membres.length*6 > 285){ doc.addPage(); y = 16; }
+    doc.autoTable({
+      startY: y, margin:{left:marge, right:marge},
+      head: [[{content:'Groupe '+coul.nom+'   ('+membres.length+' élève'+(membres.length>1?'s':'')+')', colSpan:6,
+               styles:{fillColor:hexRgb(coul.fond), textColor:coul.texte==='#fff'?255:[29,29,29], fontSize:10.5, fontStyle:'bold'}}],
+             ['Nom','Prénom','Âge','Sexe','Score','Vigilances']],
+      body: membres.map(el=>[el.nom.toUpperCase(), el.prenom, el.age, el.sexe, score(el), vigisDe(el).map(cv=>cv.nom).join(', ')]),
+      styles:{font:'helvetica', fontSize:8.5, cellPadding:1.5},
+      headStyles:{fillColor:[61,81,87], textColor:255, fontSize:8, fontStyle:'bold'},
+      columnStyles:{2:{cellWidth:12, halign:'center'}, 3:{cellWidth:12, halign:'center'}, 4:{cellWidth:14, halign:'center', fontStyle:'bold'}},
+      alternateRowStyles:{fillColor:[247,250,249]},
+      theme:'grid'
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+
+  if(vigis.length){
+    if(y > 275){ doc.addPage(); y = 16; }
+    doc.setFontSize(7.5); doc.setTextColor(90,100,105);
+    doc.text('Vigilances : ' + vigis.map(cv=>cv.nom+' ('+({repartir:'réparti',regrouper:'regroupé',libre:'libre'})[cv.mode]+')').join('  ·  '), marge, y+2);
+  }
+
+  const pages = doc.getNumberOfPages();
+  for(let p=1; p<=pages; p++){
+    doc.setPage(p); doc.setFontSize(7); doc.setTextColor(140,148,152);
+    doc.text(titre + ' — page '+p+'/'+pages, 210-marge, 291, {align:'right'});
+  }
+  doc.save('groupes_EPS_' + nomFichierBase() + '.pdf');
+  toast('PDF des groupes généré.');
+});
+
+/* ---- Feuille de terrain (paysage, une page par groupe) ---- */
+$('#btnFeuille').addEventListener('click', ()=>{
+  if(!etat.compose){ toast('Composez d\u2019abord les groupes.', true); return; }
+  if(!window.jspdf){ toast('Bibliothèque PDF non chargée : ouvrez la page avec une connexion internet une première fois.', true); return; }
+  const S = Math.min(6, Math.max(1, parseInt($('#nbSeances').value,10) || 3));
+  $('#nbSeances').value = S;
+  const doc = new window.jspdf.jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  const n = 1 + Math.max(0, ...etat.eleves.map(e=>e.groupe==null?0:e.groupe));
+  const c = compoActive();
+  const sousTitre = [$('#nomClasse').value.trim(), c ? c.nom : ''].filter(Boolean).join(' — ');
+  const marge = 12;
+  const largeurUtile = 297 - 2*marge;
+  const lPres = 11, lPerf = 20, lEleve = 46;
+  const lObs = Math.max(22, (largeurUtile - lEleve - S*(lPres+lPerf)) / S);
+
+  for(let g=0; g<n; g++){
+    if(g > 0) doc.addPage();
+    const coul = COULEURS_GROUPES[g%COULEURS_GROUPES.length];
+    const membres = etat.eleves.filter(e=>e.groupe===g).sort((a,b)=>
+      (a.nom+a.prenom).localeCompare(b.nom+b.prenom, 'fr'));
+
+    // bandeau de groupe
+    const rgb = hexRgb(coul.fond);
+    doc.setFillColor(rgb[0],rgb[1],rgb[2]);
+    doc.rect(marge, 10, largeurUtile, 10, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    if(coul.texte==='#fff') doc.setTextColor(255,255,255); else doc.setTextColor(29,29,29);
+    doc.text('Groupe ' + coul.nom + (sousTitre ? '  —  ' + sousTitre : ''), marge+3, 17);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(70,80,85);
+    doc.text('Enseignant : ______________________        Période : ____________________        P = présent · D = dispensé · A = absent', marge, 26);
+
+    // en-tête sur deux lignes : séances puis Prés./Perf./Observations
+    const ligne1 = [{content:'Élève', rowSpan:2, styles:{halign:'left', valign:'middle'}}];
+    const ligne2 = [];
+    for(let s=1; s<=S; s++){
+      ligne1.push({content:'Séance '+s+'  (date : ............ )', colSpan:3, styles:{halign:'center'}});
+      ligne2.push({content:'Prés.', styles:{halign:'center'}}, {content:'Perf.', styles:{halign:'center'}}, {content:'Observations', styles:{halign:'center'}});
+    }
+    const corps = membres.map(el=>{
+      const ligne = [el.nom.toUpperCase()+' '+el.prenom + (vigisDe(el).length ? '  •' : '')];
+      for(let s=0; s<S; s++) ligne.push('', '', '');
+      return ligne;
+    });
+    for(let extra=0; extra<2; extra++){ // deux lignes vierges (arrivées tardives, changements)
+      const ligne = [''];
+      for(let s=0; s<S; s++) ligne.push('', '', '');
+      corps.push(ligne);
+    }
+
+    const colStyles = {0:{cellWidth:lEleve, fontStyle:'bold'}};
+    for(let s=0; s<S; s++){
+      colStyles[1+3*s] = {cellWidth:lPres, halign:'center'};
+      colStyles[2+3*s] = {cellWidth:lPerf, halign:'center'};
+      colStyles[3+3*s] = {cellWidth:lObs};
+    }
+    doc.autoTable({
+      startY: 30, margin:{left:marge, right:marge},
+      head: [ligne1, ligne2],
+      body: corps,
+      styles:{font:'helvetica', fontSize:8.5, cellPadding:1.6, minCellHeight:9, valign:'middle', lineColor:[120,130,135], lineWidth:0.15},
+      headStyles:{fillColor:[61,81,87], textColor:255, fontSize:8, fontStyle:'bold', minCellHeight:6},
+      columnStyles: colStyles,
+      theme:'grid'
+    });
+    doc.setFontSize(7); doc.setTextColor(140,148,152);
+    doc.text('• = élève faisant l\u2019objet d\u2019une vigilance (voir tableau de composition) — Feuille de terrain, ' + new Date().toLocaleDateString('fr-FR'), marge, 202);
+  }
+  doc.save('feuille_terrain_' + nomFichierBase() + '.pdf');
+  toast('Feuille de terrain générée : une page par groupe, ' + S + ' séance' + (S>1?'s':'') + '.');
+});
+
+/* ================= PROJET (sauvegarde / reprise) ================= */
+$('#btnSauver').addEventListener('click', ()=>{
+  sauverCompoActive();
+  const projet = {
+    version: 2,
+    classe: $('#nomClasse').value,
+    eleves: etat.eleves.map(({id,nom,prenom,age,sexe,crits})=>({id,nom,prenom,age,sexe,crits})),
+    criteres: etat.criteres,
+    paires: etat.paires,
+    compos: etat.compos,
+    compoActiveId: etat.compoActiveId,
+    prochainId
+  };
+  const blob = new Blob([JSON.stringify(projet, null, 1)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `projet_groupes_EPS_${(($('#nomClasse').value||'classe').replace(/[^\wàâäéèêëîïôöùûüç -]/gi,'').trim()||'classe')}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Projet enregistré (toutes les séquences incluses).');
+});
+$('#btnCharger').addEventListener('click', ()=>$('#fichierProjet').click());
+$('#fichierProjet').addEventListener('change', ()=>{
+  const f = $('#fichierProjet').files[0];
+  if(!f) return;
+  const lecteur = new FileReader();
+  lecteur.onload = e=>{
+    try{
+      const p = JSON.parse(e.target.result);
+      etat.criteres = p.criteres || [];
+      etat.paires = p.paires || [];
+      $('#nomClasse').value = p.classe || '';
+      if(p.version === 2){
+        etat.eleves = (p.eleves || []).map(el=>({...el, groupe:null, verrou:false}));
+        etat.compos = p.compos && p.compos.length ? p.compos : [];
+        if(!etat.compos.length) nouvelleCompo('Séquence 1');
+        prochainId = p.prochainId || (Math.max(0, ...etat.eleves.map(x=>x.id)) + 1);
+        rendreCriteres(); rendreTable();
+        chargerCompo(p.compoActiveId && etat.compos.some(c=>c.id===p.compoActiveId) ? p.compoActiveId : etat.compos[0].id);
+      } else {
+        // migration depuis la version 1 : une seule composition
+        etat.eleves = p.eleves || [];
+        etat.compos = [];
+        const c = nouvelleCompo('Séquence 1');
+        c.nbGroupes = parseInt(p.nbGroupes,10) || 4;
+        c.mode = p.mode || 'homogene';
+        c.mixite = !!p.mixite;
+        c.compose = !!p.compose;
+        etat.eleves.forEach(el=>{
+          if(el.groupe != null) c.affect[el.id] = el.groupe;
+          if(el.verrou) c.verrous[el.id] = true;
+          delete el.groupe; delete el.verrou;
+        });
+        etat.eleves = etat.eleves.map(el=>({...el, groupe:null, verrou:false}));
+        prochainId = p.prochainId || (Math.max(0, ...etat.eleves.map(x=>x.id)) + 1);
+        rendreCriteres(); rendreTable();
+        chargerCompo(c.id);
+        toast('Projet (ancienne version) converti : la composition existante devient « Séquence 1 ».');
+        return;
+      }
+      toast('Projet chargé : ' + etat.eleves.length + ' élève(s), ' + etat.compos.length + ' séquence(s).');
+    }catch(err){ console.error(err); toast('Fichier de projet illisible.', true); }
+  };
+  lecteur.readAsText(f);
+  $('#fichierProjet').value = '';
+});
+
+/* ================= INITIALISATION ================= */
+nouvelleCompo('Séquence 1');
+etat.compoActiveId = etat.compos[0].id;
+rendreBarreCompo();
+rendreCriteres();
+rendreTable();
+
+</script>
+</body>
+</html>

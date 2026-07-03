@@ -1,0 +1,22 @@
+# Groupes EPS
+
+Outil web autonome pour composer des groupes de classe en EPS selon des criteres de niveau, performances, vigilances et paires d'eleves.
+
+## Utilisation
+
+Ouvrir `groupes_eps.html` dans un navigateur moderne.
+
+L'application fonctionne localement dans le navigateur : aucune donnee eleve n'est envoyee vers un serveur. Une connexion internet peut etre necessaire au premier lancement pour charger les bibliotheques PDF et Excel depuis les CDN.
+
+## Documentation
+
+- `MODE_EMPLOI_GROUPES_EPS.md` : mode d'emploi complet au format Markdown
+- `Mode d'emploi pdf.pdf` : version PDF du mode d'emploi
+
+## Contenu
+
+- Import de classes depuis Excel ou CSV
+- Criteres de bonification et performances chiffrees
+- Gestion des vigilances et contraintes de paires
+- Composition de groupes homogenes ou equilibres
+- Exports PDF, Excel et projet sauvegardable
