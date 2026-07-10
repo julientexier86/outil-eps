@@ -1,6 +1,7 @@
 # Groupes EPS
 
 Outil web autonome pour composer des groupes de classe en EPS selon des criteres de niveau, performances, vigilances et paires d'eleves.
+https://julientexier86.github.io/outil-eps/groupes_eps.html
 
 ## Utilisation
 
