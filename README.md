@@ -1,5 +1,7 @@
 # Groupes EPS
 
+![JavaScript](https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black) ![Type](https://img.shields.io/badge/Type-site%20statique-0f766e?logo=html5&logoColor=white) ![Deploy](https://img.shields.io/badge/Deploy-GitHub%20Pages-222?logo=githubpages&logoColor=white) ![Local](https://img.shields.io/badge/Données-locales-2e7d32)
+
 Outil web autonome pour composer des groupes de classe en EPS selon des criteres de niveau, performances, vigilances et paires d'eleves.
 https://julientexier86.github.io/outil-eps/groupes_eps.html
 
